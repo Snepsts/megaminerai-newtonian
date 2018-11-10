@@ -81,9 +81,9 @@ class AI(BaseAI):
         # Put your game logic here for runTurn
 
         """
-                Please note: This code is intentionally bad. You should try to optimize everything here. THe code here is only to show you how to use the game's
-                             mechanics with the MegaMinerAI server framework.
-                """
+            Please note: This code is intentionally bad. You should try to optimize everything here. THe code here is 
+            only to show you how to use the game's mechanics with the MegaMinerAI server framework.
+        """
         # Goes through all the units that you own.
         for unit in self.player.units:
             # Only tries to do something if the unit actually exists.
@@ -104,13 +104,14 @@ class AI(BaseAI):
         # Tries to find a workable machine for blueium ore.
         # Note: You need to get redium ore as well.
         target = None
+
         # Goes through all the machines in the game and picks one that is ready to process ore as its target.
         for machine in self.game.machines:
             if machine.tile.blueium_ore >= machine.refine_input:
                 target = machine.tile
         if target is None:
             # Chases down enemy managers if there are no machines that are ready to be worked.
-            for enemy in self.game.units:
+            for enemy in self.player.opponent.units:
                 # Only does anything if the unit that we found is a manager and belongs to our opponent.
                 if enemy.tile is not None and enemy.owner == self.player.opponent and enemy.job.title == 'manager':
                     # Moves towards the manager.
@@ -175,11 +176,9 @@ class AI(BaseAI):
 
     def manager_turn(self, unit):
         # Finds enemy interns, stuns, and attacks them if there is no blueium to take to the generator.
-        target = None
-        for tile in self.game.tiles:
-            if tile.blueium > 1 and unit.blueium < unit.job.carry_limit:
-                target = tile
-        if target is None and unit.blueium == 0:
+        self.get_refined_material_tile()
+        target = self.get_refined_material_tile()
+        if target is None and not self.unit_carries_material(unit):
             for enemy in self.game.units:
                 # Only does anything for an intern that is owned by your opponent.
                 if enemy.tile is not None and enemy.owner == self.player.opponent and enemy.job.title == 'intern':
@@ -198,22 +197,65 @@ class AI(BaseAI):
                     break
         elif target is not None:
             # Moves towards our target until at the target or out of moves.
-            while unit.moves > 0 and len(self.find_path(unit.tile, target)) > 1:
-                if not unit.move(self.find_path(unit.tile, target)[0]):
-                    break
+            move_in_path(unit, self.find_path(unit.tile, target))
             # Picks up blueium once we reach our target's tile.
-            if len(self.find_path(unit.tile, target)) <= 1 and target.blueium > 0:
-                unit.pickup(target, 0, 'blueium')
-        elif target is None and unit.blueium > 0:
+            if len(self.find_path(unit.tile, target)) <= 1:
+                if target.blueium > 0:
+                    unit.pickup(target, 0, 'blueium')
+                elif target.redium > 0:
+                    unit.pickup(target, 0, 'redium')
+        elif target is None and self.unit_carries_material(unit):
             # Stores a tile that is part of your generator.
             gen_tile = self.player.generator_tiles[0]
             # Goes to your generator and drops blueium in.
-            while unit.moves > 0 and len(self.find_path(unit.tile, gen_tile)) > 0:
-                if not unit.move(self.find_path(unit.tile, gen_tile)[0]):
-                    break
+            move_in_path(unit, self.find_path(unit.tile, target))
             # Deposits blueium in our generator if we have reached it.
             if len(self.find_path(unit.tile, gen_tile)) <= 1:
-                unit.drop(gen_tile, 0, 'blueium')
+                if unit.blueium > 0:
+                    unit.drop(gen_tile, 0, 'blueium')
+                elif unit.redium > 0:
+                    unit.drop(gen_tile, 0, 'redium')
+
+    def move_in_path(self, unit, path):
+        if len(path) <= 0:
+            return
+
+        while unit.moves > 0 and len(path) > 0:
+            if unit.move(path[0]):
+                del path[0]
+            else:
+                break
+
+    def get_refined_material_tile(self):
+        materials = []
+        ret = None
+
+        for tile in self.game.tiles:
+            if self.get_material_count_of_tile(tile) > 1:
+                materials.append(tile)
+
+        if len(materials) > 0:
+            ret = materials[0]
+            for tile in materials:
+                if self.get_material_count_of_tile(tile) > self.get_material_count_of_tile(ret): #TODO: Make this better
+                    ret = tile
+        else:
+            ret = None
+
+        return ret
+
+    @staticmethod
+    def unit_carries_material(unit):
+        return unit.blueium > 0 or unit.redium > 0 or unit.blueium_ore > 0 or unit.redium_ore > 0
+
+    @staticmethod
+    def get_material_count_of_tile(tile):
+        ret = 0
+
+        ret += tile.redium
+        ret += tile.blueium
+
+        return ret
 
     def find_path(self, start, goal):
         """A very basic path finding algorithm (Breadth First Search) that when
