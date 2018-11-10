@@ -11,6 +11,8 @@ from colorama import init, Fore, Back, Style
 class AI(BaseAI):
     """ The AI you add and improve code inside to play Newtonian. """
 
+    intern_plans = []
+
     @property
     def game(self):
         """The reference to the Game instance this AI is playing.
@@ -71,7 +73,7 @@ class AI(BaseAI):
         # replace with your end logic
         # <<-- /Creer-Merge: end -->>
     def run_turn(self):
-        self.display_map()
+        #self.display_map()
         """ This is called every time it is this AI.player's turn.
 
         Returns:
@@ -140,38 +142,107 @@ class AI(BaseAI):
             if adjacent and not unit.acted:
                 unit.act(target)
 
+
     def intern_turn(self, unit):
-        # If the unit is an intern, collects blueium ore.
-        # Note: You also need to collect redium ore.
-        # Goes to gather resources if currently carrying less than the carry limit.
-        if unit.blueium_ore < unit.job.carry_limit:
-            # Your intern's current target.
-            target = None
-            # Goes to collect blueium ore that isn't on a machine.
-            for tile in self.game.tiles:
-                if tile.blueium_ore > 0 and tile.machine is None:
-                    target = tile
-                    break
-            # Moves towards our target until at the target or out of moves.
-            if len(self.find_path(unit.tile, target)) > 0:
-                while unit.moves > 0 and len(self.find_path(unit.tile, target)) > 0:
-                    if not unit.move(self.find_path(unit.tile, target)[0]):
-                        break
-            # Picks up the appropriate resource once we reach our target's tile.
-            if unit.tile == target and target.blueium_ore > 0:
-                unit.pickup(target, 0, 'blueium ore')
+        unit_data = None
+        if len(self.intern_plans) == 0:
+            unit_data = [unit, self.get_closest_ore(unit)]
+            self.intern_plans.append(unit_data)
+        else:
+            unit_data = [x for x in self.intern_plans if x[0] == unit]
+            if len(unit_data) == 0:
+                units_gathering_blue = [x for x in self.intern_plans if x[1] == 'blueium']
+                units_gathering_red = [x for x in self.intern_plans if x[1] == 'redium']
+                if len(units_gathering_blue) < len(units_gathering_red):
+                    data = [unit, 'blueium']
+                else:
+                    data = [unit, 'redium']
+                self.intern_plans.append(data)
+                unit_data = data
             else:
-                # Deposits blueium ore in a machine for it if we have any.
-                # Finds a machine in the game's tiles that takes blueium ore.
-                for tile in self.game.tiles:
-                    if tile.machine is not None and tile.machine.ore_type == 'blueium':
-                        # Moves towards the found machine until we reach it or are out of moves.
-                        while unit.moves > 0 and len(self.find_path(unit.tile, tile)) > 1:
-                            if not unit.move(self.find_path(unit.tile, tile)[0]):
-                                break
-                        # Deposits blueium ore on the machine if we have reached it.
-                        if len(self.find_path(unit.tile, tile)) <= 1:
-                            unit.drop(tile, 0, 'blueium ore')
+                unit_data = unit_data[0]
+
+        if unit_data[1] == 'blueium':
+            if unit.blueium_ore < unit.job.carry_limit:
+                target = self.get_closest_blueium_ore()
+                self.gather(unit, 'blueium ore', target)
+            else:
+                self.deposit(unit, 'blueium')
+
+        elif unit_data[1] == 'redium':
+            if unit.redium_ore < unit.job.carry_limit:
+                target = self.get_closest_redium_ore()
+                self.gather(unit, 'redium ore', target)
+            else:
+                self.deposit(unit, 'redium')
+        print('end of unit turn')
+
+
+    def gather(self, unit, ore, target):
+        # Moves towards our target until at the target or out of moves.
+        if len(self.find_path(unit.tile, target)) > 0:
+            while unit.moves > 0 and len(self.find_path(unit.tile, target)) > 0:
+                if not unit.move(self.find_path(unit.tile, target)[0]):
+                    break
+        # Picks up the appropriate resource once we reach our target's tile.
+        if unit.tile == target and target.blueium_ore > 0:
+            unit.pickup(target, 0, ore)
+
+    def deposit(self, unit, color):
+        print('depositing' + color + '!')
+        tile = self.get_closest_machine(unit, color)
+        while unit.moves > 0 and len(self.find_path(unit.tile, tile)) > 1:
+            print(color + ' depositor moving!')
+            if not unit.move(self.find_path(unit.tile, tile)[0]):
+                break
+        if len(self.find_path(unit.tile, tile)) <= 1:
+            print('dropping')
+            unit.drop(tile, 0, color)
+
+    def get_closest_machine(self, unit, color):
+        machines = []
+        smallest = 999
+        closest_tile = None
+
+        for tile in self.game.tiles:
+            if tile.machine is not None and tile.machine.ore_type == color:
+                print('found machine')
+                machines.append(tile)
+
+        for tile in machines:
+            path_length = len(self.find_path(unit.tile, tile))
+            if path_length != 0 and path_length < smallest:
+                print('found a path')
+                smallest = path_length
+                closest_tile = tile
+        return closest_tile
+
+    def get_closest_blueium_ore(self):
+        target = None
+        for tile in self.game.tiles:
+            if tile.blueium_ore > 0 and tile.machine is None:
+                target = tile
+                break
+        return target
+
+    def get_closest_redium_ore(self):
+        target = None
+        for tile in self.game.tiles:
+            if tile.redium_ore > 0 and tile.machine is None:
+                target = tile
+                break
+        return target
+
+    def get_closest_ore(self, unit):
+        blue = self.get_closest_blueium_ore()
+        red = self.get_closest_redium_ore()
+        b_length = len(self.find_path(unit.tile, blue))
+        r_length = len(self.find_path(unit.tile, red))
+        if b_length < r_length:
+            return 'blueium'
+        else:
+            return 'redium'
+
 
     def manager_turn(self, unit):
         # Finds enemy interns, stuns, and attacks them if there is no blueium to take to the generator.
