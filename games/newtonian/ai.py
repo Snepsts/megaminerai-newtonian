@@ -6,8 +6,7 @@ from joueur.base_ai import BaseAI
 # you can add additional import(s) here
 # <<-- /Creer-Merge: imports -->>
 
-# Un-comment this line if you would like to use the debug map, which requires the colorama package.
-# from colorama import init, Fore, Back, Style
+from colorama import init, Fore, Back, Style
 
 class AI(BaseAI):
     """ The AI you add and improve code inside to play Newtonian. """
@@ -72,6 +71,7 @@ class AI(BaseAI):
         # replace with your end logic
         # <<-- /Creer-Merge: end -->>
     def run_turn(self):
+        self.display_map()
         """ This is called every time it is this AI.player's turn.
 
         Returns:
@@ -270,7 +270,6 @@ class AI(BaseAI):
 
     # <<-- Creer-Merge: functions -->> - Code you add between this comment and the end comment will be preserved between Creer re-runs.
     # if you need additional functions for your AI you can add them here
-    """
     def display_map(self):
             # A function to display the current state of the map, mainly used for
             # debugging without the visualizer. Use this to see a live view of what
@@ -288,55 +287,54 @@ class AI(BaseAI):
                         print(Back.RED, end='')
                     else:
                         print(Back.BLUE, end='')
-            elif t.is_wall:
-            print(Back.BLACK, end='')
-        else:
-            print(Back.WHITE, end='')
-        foreground = ' '
-        if t.machine is not None:
-            foreground = 'M'
-        print(Fore.WHITE, end='')
-        if t.unit is not None:
-            if t.unit.owner == self.player:
-                print(Fore.CYAN, end='')
+                elif t.is_wall:
+                    print(Back.BLACK, end='')
+                else:
+                    print(Back.WHITE, end='')
+                foreground = ' '
+                if t.machine is not None:
+                    foreground = 'M'
+                print(Fore.WHITE, end='')
+                if t.unit is not None:
+                    if t.unit.owner == self.player:
+                        print(Fore.CYAN, end='')
+                    else:
+                        print(Fore.MAGENTA, end='')
+                    foreground = t.unit.job.title[0].upper()
+
+                elif t.blueium > 0 and t.blueium >= t.redium:
+                    print(Fore.BLUE, end='')
+                    if foreground == ' ':
+                        foreground = 'R'
+
+                elif t.redium > 0 and t.redium > t.blueium:
+                    print(Fore.RED, end='')
+                    if foreground == ' ':
+                        foreground = 'R'
+                elif t.blueium_ore > 0 and t.blueium_ore >= t.redium_ore:
+                    print(Fore.BLUE, end='')
+                    if foreground == ' ':
+                        foreground = 'O'
+                elif t.redium_ore > 0 and t.redium_ore > t.blueium_ore:
+                    print(Fore.RED, end='')
+                    if foreground == ' ':
+                        foreground = 'O'
+                elif t.owner is not None:
+                    if t.type == 'spawn' or t.type == 'generator':
+                        if t.owner == self.player:
+                            print(Back.CYAN, end='')
+                        else:
+                            print(Back.MAGENTA, end='')
+                print(foreground + Fore.RESET + Back.RESET, end='')
+            if y < 10:
+                print(' 0' + str(y))
             else:
-                print(Fore.MAGENTA, end='')
-            foreground = t.unit.job.title[0].upper()
-
-    elif t.blueium > 0 and t.blueium >= t.redium:
-    print(Fore.BLUE, end='')
-    if foreground == ' ':
-        foreground = 'R'
-
-elif t.redium > 0 and t.redium > t.blueium:
-print(Fore.RED, end='')
-if foreground == ' ':
-    foreground = 'R'
-elif t.blueium_ore > 0 and t.blueium_ore >= t.redium_ore:
-    print(Fore.BLUE, end='')
-if foreground == ' ':
-    foreground = 'O'
-elif t.redium_ore > 0 and t.redium_ore > t.blueium_ore:
-    print(Fore.RED, end='')
-if foreground == ' ':
-    foreground = 'O'
-elif t.owner is not None:
-    if t.type == 'spawn' or t.type == 'generator':
-        if t.owner == self.player:
-            print(Back.CYAN, end='')
-        else:
-            print(Back.MAGENTA, end='')
-print(foreground + Fore.RESET + Back.RESET, end='')
-if y < 10:
-    print(' 0' + str(y))
-else:
-    print(' ' + str(y))
-print('\nTurn: ' + str(self.game.current_turn) + ' / '
-      + str(self.game.max_turns))
-print(Fore.CYAN + 'Heat: ' + str(self.player.heat)
-      + '\tPressure: ' + str(self.player.pressure) + Fore.RESET)
-print(Fore.MAGENTA + 'Heat: ' + str(self.player.opponent.heat)
-      + '\tPressure: ' + str(self.player.opponent.pressure) + Fore.RESET)
-return
-"""
+                print(' ' + str(y))
+        print('\nTurn: ' + str(self.game.current_turn) + ' / '
+              + str(self.game.max_turns))
+        print(Fore.CYAN + 'Heat: ' + str(self.player.heat)
+              + '\tPressure: ' + str(self.player.pressure) + Fore.RESET)
+        print(Fore.MAGENTA + 'Heat: ' + str(self.player.opponent.heat)
+              + '\tPressure: ' + str(self.player.opponent.pressure) + Fore.RESET)
+        return
     # <<-- /Creer-Merge: functions -->>
