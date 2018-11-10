@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="7a58c180-b8a9-4ee5-9447-32c5c9879059" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/games/newtonian/ai.py" beforeDir="false" afterPath="$PROJECT_DIR$/games/newtonian/ai.py" afterDir="false" />
-    </list>
+    <list default="true" id="7a58c180-b8a9-4ee5-9447-32c5c9879059" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
