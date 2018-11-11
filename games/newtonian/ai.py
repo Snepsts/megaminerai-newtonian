@@ -121,7 +121,7 @@ class AI(BaseAI):
         if len(machine_list) > 0:
             for machine in machine_list:
                 path = self.find_path(unit.tile, machine.tile)
-                if len(path) > shortest:
+                if len(path) < shortest:
                     ret = machine.tile
                     shortest = len(path)
 
@@ -135,6 +135,7 @@ class AI(BaseAI):
         target = self.get_phys_machine(unit)
 
         if target is None:
+            unit.log("Chasing Managers")
             # Chases down enemy managers if there are no machines that are ready to be worked.
             for enemy in self.player.opponent.units:
                 # Only does anything if the unit that we found is a manager and belongs to our opponent.
@@ -153,6 +154,7 @@ class AI(BaseAI):
                             unit.attack(enemy.tile)
                     break
         else:
+            unit.log("Going to machine")
             # Gets the tile of the targeted machine if adjacent to it.
             adjacent = False
             for tile in target.get_neighbors():
@@ -188,7 +190,6 @@ class AI(BaseAI):
 
         if unit_data[1] == 'blueium':
             if unit.blueium_ore < unit.job.carry_limit:
-                print('\tblue inventory not full still gathering')
                 unit.log('Gathering Blueium')
                 target = self.get_closest_blueium_ore()
                 self.gather(unit, 'blueium ore', target)
@@ -198,7 +199,6 @@ class AI(BaseAI):
 
         else:
             if unit.redium_ore < unit.job.carry_limit:
-                print('\tred inventory not full still gathering')
                 unit.log('Gathering Redium')
                 target = self.get_closest_redium_ore()
                 self.gather(unit, 'redium ore', target)
@@ -221,10 +221,8 @@ class AI(BaseAI):
                 unit.pickup(target, 0, ore)
 
     def deposit(self, unit, color):
-        print('\tdepositing ' + color + '!')
         tile = self.get_closest_machine(unit, color)
         while unit.moves > 0 and len(self.find_path(unit.tile, tile)) > 1:
-            print('\t'+ color + ' depositor moving!')
             if not unit.move(self.find_path(unit.tile, tile)[0]):
                 break
         if len(self.find_path(unit.tile, tile)) <= 1:
@@ -275,9 +273,9 @@ class AI(BaseAI):
 
     def manager_turn(self, unit):
         # Finds enemy interns, stuns, and attacks them if there is no blueium to take to the generator.
-        self.get_refined_material_tile()
         target = self.get_refined_material_tile()
         if target is None and not self.unit_carries_material(unit):
+            unit.log('Chasing interns')
             for enemy in self.game.units:
                 # Only does anything for an intern that is owned by your opponent.
                 if enemy.tile is not None and enemy.owner == self.player.opponent and enemy.job.title == 'intern':
@@ -295,6 +293,7 @@ class AI(BaseAI):
                             unit.attack(enemy.tile)
                     break
         elif target is not None:
+            unit.log('Picking up resources')
             # Moves towards our target until at the target or out of moves.
             self.move_in_path(unit, self.find_path(unit.tile, target))
             # Picks up blueium once we reach our target's tile.
@@ -310,6 +309,7 @@ class AI(BaseAI):
             self.move_in_path(unit, self.find_path(unit.tile, gen_tile))
             # Deposits blueium in our generator if we have reached it.
             if len(self.find_path(unit.tile, gen_tile)) <= 1:
+                unit.log('Trying to drop')
                 if unit.blueium > 0:
                     unit.drop(gen_tile, 0, 'blueium')
                 elif unit.redium > 0:
@@ -331,13 +331,15 @@ class AI(BaseAI):
         ret = None
 
         for tile in self.game.tiles:
-            if self.get_material_count_of_tile(tile) > 1:
+            if self.get_material_count_of_tile(tile) > 0:
+                print(self.get_material_count_of_tile(tile))
                 materials.append(tile)
 
         if len(materials) > 0:
             ret = materials[0]
             for tile in materials:
                 if self.get_material_count_of_tile(tile) > self.get_material_count_of_tile(ret): #TODO: Make this better
+                    print(ret)
                     ret = tile
         else:
             ret = None
