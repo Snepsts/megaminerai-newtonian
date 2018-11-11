@@ -115,7 +115,7 @@ class AI(BaseAI):
         shortest = 999
 
         for machine in self.game.machines:
-            if self.get_machine_ore_count(machine) >= machine.refine_input:
+            if self.get_machine_ore_count(machine) > 0:
                 machine_list.append(machine)
 
         if len(machine_list) > 0:
