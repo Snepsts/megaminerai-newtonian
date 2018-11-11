@@ -115,7 +115,7 @@ class AI(BaseAI):
         shortest = 999
 
         for machine in self.game.machines:
-            if get_machine_ore_count(machine) >= machine.refine_input:
+            if self.get_machine_ore_count(machine) >= machine.refine_input:
                 machine_list.append(machine)
 
         if len(machine_list) > 0:
@@ -240,7 +240,7 @@ class AI(BaseAI):
 
         for tile in machines:
             path_length = len(self.find_path(unit.tile, tile))
-            if path_length != 0 and path_length < smallest:
+            if len(path_length) != 0 and path_length < smallest:
                 smallest = path_length
                 closest_tile = tile
         return closest_tile
