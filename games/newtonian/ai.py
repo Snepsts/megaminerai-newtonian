@@ -145,9 +145,11 @@ class AI(BaseAI):
 
 
     def intern_turn(self, unit):
-        unit_data = None
+        print('Intern Turn:')
         if len(self.intern_plans) == 0:
-            unit_data = [unit, self.get_closest_ore(unit)]
+            ore = self.get_closest_ore(unit)
+            print(ore)
+            unit_data = [unit, ore]
             self.intern_plans.append(unit_data)
         else:
             unit_data = [x for x in self.intern_plans if x[0] == unit]
@@ -165,13 +167,15 @@ class AI(BaseAI):
 
         if unit_data[1] == 'blueium':
             if unit.blueium_ore < unit.job.carry_limit:
+                print('\tblue inventory not full still gathering')
                 target = self.get_closest_blueium_ore()
                 self.gather(unit, 'blueium ore', target)
             else:
                 self.deposit(unit, 'blueium')
 
-        elif unit_data[1] == 'redium':
+        else:
             if unit.redium_ore < unit.job.carry_limit:
+                print('\tred inventory not full still gathering')
                 target = self.get_closest_redium_ore()
                 self.gather(unit, 'redium ore', target)
             else:
@@ -186,18 +190,22 @@ class AI(BaseAI):
                 if not unit.move(self.find_path(unit.tile, target)[0]):
                     break
         # Picks up the appropriate resource once we reach our target's tile.
-        if unit.tile == target and target.blueium_ore > 0:
-            unit.pickup(target, 0, ore)
+        if ore == 'blueium ore':
+            if unit.tile == target and target.blueium_ore > 0:
+                unit.pickup(target, 0, ore)
+        else:
+            if unit.tile == target and target.redium_ore > 0:
+                unit.pickup(target, 0, ore)
 
     def deposit(self, unit, color):
-        print('depositing' + color + '!')
+        print('\tdepositing ' + color + '!')
         tile = self.get_closest_machine(unit, color)
         while unit.moves > 0 and len(self.find_path(unit.tile, tile)) > 1:
-            print(color + ' depositor moving!')
+            print('\t'+ color + ' depositor moving!')
             if not unit.move(self.find_path(unit.tile, tile)[0]):
                 break
         if len(self.find_path(unit.tile, tile)) <= 1:
-            print('dropping')
+            print('\tdropping ' + color)
             unit.drop(tile, 0, color)
 
     def get_closest_machine(self, unit, color):
@@ -207,13 +215,11 @@ class AI(BaseAI):
 
         for tile in self.game.tiles:
             if tile.machine is not None and tile.machine.ore_type == color:
-                print('found machine')
                 machines.append(tile)
 
         for tile in machines:
             path_length = len(self.find_path(unit.tile, tile))
             if path_length != 0 and path_length < smallest:
-                print('found a path')
                 smallest = path_length
                 closest_tile = tile
         return closest_tile
@@ -235,10 +241,12 @@ class AI(BaseAI):
         return target
 
     def get_closest_ore(self, unit):
-        blue = self.get_closest_blueium_ore()
-        red = self.get_closest_redium_ore()
+        blue = self.get_closest_machine(unit, 'blueium')
+        red = self.get_closest_machine(unit, 'redium')
         b_length = len(self.find_path(unit.tile, blue))
+        print(b_length)
         r_length = len(self.find_path(unit.tile, red))
+        print(r_length)
         if b_length < r_length:
             return 'blueium'
         else:
@@ -268,7 +276,7 @@ class AI(BaseAI):
                     break
         elif target is not None:
             # Moves towards our target until at the target or out of moves.
-            move_in_path(unit, self.find_path(unit.tile, target))
+            self.move_in_path(unit, self.find_path(unit.tile, target))
             # Picks up blueium once we reach our target's tile.
             if len(self.find_path(unit.tile, target)) <= 1:
                 if target.blueium > 0:
@@ -279,14 +287,14 @@ class AI(BaseAI):
             # Stores a tile that is part of your generator.
             gen_tile = self.player.generator_tiles[0]
             # Goes to your generator and drops blueium in.
-            move_in_path(unit, self.find_path(unit.tile, target))
+            self.move_in_path(unit, self.find_path(unit.tile, target))
             # Deposits blueium in our generator if we have reached it.
             if len(self.find_path(unit.tile, gen_tile)) <= 1:
                 if unit.blueium > 0:
                     unit.drop(gen_tile, 0, 'blueium')
                 elif unit.redium > 0:
                     unit.drop(gen_tile, 0, 'redium')
-
+    @staticmethod
     def move_in_path(self, unit, path):
         if len(path) <= 0:
             return
