@@ -100,17 +100,40 @@ class AI(BaseAI):
         return True
         # <<-- /Creer-Merge: runTurn -->>
 
+    @staticmethod
+    def get_machine_ore_count(machine):
+        ret = 0
+
+        ret += machine.tile.blueium_ore
+        ret += machine.tile.redium_ore
+
+        return ret
+
+    def get_phys_machine(self, unit):
+        ret = None
+        machine_list = []
+        shortest = 999
+
+        for machine in self.game.machines:
+            if get_machine_ore_count(machine) >= machine.refine_input:
+                machine_list.append(machine)
+
+        if len(machine_list) > 0:
+            for machine in machine_list:
+                path = self.find_path(unit.tile, machine.tile)
+                if path > shortest:
+                    ret = machine.tile
+                    shortest = len(path)
+
+        return ret
+
     def phys_turn(self, unit):
         # If the unit is a physicist, tries to work on machines that are ready, but if there are none,
         # it finds and attacks enemy managers.
         # Tries to find a workable machine for blueium ore.
         # Note: You need to get redium ore as well.
-        target = None
+        target = self.get_phys_machine(unit)
 
-        # Goes through all the machines in the game and picks one that is ready to process ore as its target.
-        for machine in self.game.machines:
-            if machine.tile.blueium_ore >= machine.refine_input:
-                target = machine.tile
         if target is None:
             # Chases down enemy managers if there are no machines that are ready to be worked.
             for enemy in self.player.opponent.units:
@@ -142,7 +165,6 @@ class AI(BaseAI):
             # Acts on the target machine to run it if the physicist is adjacent.
             if adjacent and not unit.acted:
                 unit.act(target)
-
 
     def intern_turn(self, unit):
         unit_data = None
@@ -177,7 +199,6 @@ class AI(BaseAI):
             else:
                 self.deposit(unit, 'redium')
         print('end of unit turn')
-
 
     def gather(self, unit, ore, target):
         # Moves towards our target until at the target or out of moves.
@@ -244,7 +265,6 @@ class AI(BaseAI):
         else:
             return 'redium'
 
-
     def manager_turn(self, unit):
         # Finds enemy interns, stuns, and attacks them if there is no blueium to take to the generator.
         self.get_refined_material_tile()
@@ -268,7 +288,7 @@ class AI(BaseAI):
                     break
         elif target is not None:
             # Moves towards our target until at the target or out of moves.
-            move_in_path(unit, self.find_path(unit.tile, target))
+            self.move_in_path(unit, self.find_path(unit.tile, target))
             # Picks up blueium once we reach our target's tile.
             if len(self.find_path(unit.tile, target)) <= 1:
                 if target.blueium > 0:
@@ -279,7 +299,7 @@ class AI(BaseAI):
             # Stores a tile that is part of your generator.
             gen_tile = self.player.generator_tiles[0]
             # Goes to your generator and drops blueium in.
-            move_in_path(unit, self.find_path(unit.tile, target))
+            self.move_in_path(unit, self.find_path(unit.tile, gen_tile))
             # Deposits blueium in our generator if we have reached it.
             if len(self.find_path(unit.tile, gen_tile)) <= 1:
                 if unit.blueium > 0:
@@ -287,8 +307,9 @@ class AI(BaseAI):
                 elif unit.redium > 0:
                     unit.drop(gen_tile, 0, 'redium')
 
-    def move_in_path(self, unit, path):
-        if len(path) <= 0:
+    @staticmethod
+    def move_in_path(unit, path):
+        if path is None or len(path) <= 0:
             return
 
         while unit.moves > 0 and len(path) > 0:
