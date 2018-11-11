@@ -115,13 +115,13 @@ class AI(BaseAI):
         shortest = 999
 
         for machine in self.game.machines:
-            if get_machine_ore_count(machine) >= machine.refine_input:
+            if self.get_machine_ore_count(machine) >= machine.refine_input:
                 machine_list.append(machine)
 
         if len(machine_list) > 0:
             for machine in machine_list:
                 path = self.find_path(unit.tile, machine.tile)
-                if path > shortest:
+                if len(path) > shortest:
                     ret = machine.tile
                     shortest = len(path)
 
@@ -167,7 +167,6 @@ class AI(BaseAI):
                 unit.act(target)
 
     def intern_turn(self, unit):
-        print('Intern Turn:')
         if len(self.intern_plans) == 0:
             ore = self.get_closest_ore(unit)
             print(ore)
@@ -190,19 +189,22 @@ class AI(BaseAI):
         if unit_data[1] == 'blueium':
             if unit.blueium_ore < unit.job.carry_limit:
                 print('\tblue inventory not full still gathering')
+                unit.log('Gathering Blueium')
                 target = self.get_closest_blueium_ore()
                 self.gather(unit, 'blueium ore', target)
             else:
+                unit.log('Depositing Blueium')
                 self.deposit(unit, 'blueium')
 
         else:
             if unit.redium_ore < unit.job.carry_limit:
                 print('\tred inventory not full still gathering')
+                unit.log('Gathering Redium')
                 target = self.get_closest_redium_ore()
                 self.gather(unit, 'redium ore', target)
             else:
+                unit.log('Depositing Redium')
                 self.deposit(unit, 'redium')
-        print('end of unit turn')
 
     def gather(self, unit, ore, target):
         # Moves towards our target until at the target or out of moves.
@@ -262,12 +264,10 @@ class AI(BaseAI):
         return target
 
     def get_closest_ore(self, unit):
-        blue = self.get_closest_machine(unit, 'blueium')
-        red = self.get_closest_machine(unit, 'redium')
+        red = self.get_closest_machine(unit, 'blueium')
+        blue = self.get_closest_machine(unit, 'redium')
         b_length = len(self.find_path(unit.tile, blue))
-        print(b_length)
         r_length = len(self.find_path(unit.tile, red))
-        print(r_length)
         if b_length < r_length:
             return 'blueium'
         else:
