@@ -208,7 +208,12 @@ class AI(BaseAI):
 
     def gather(self, unit, ore, target):
         # Moves towards our target until at the target or out of moves.
-        if len(self.find_path(unit.tile, target)) > 0:
+        path = self.find_path_avoid_managers(unit.tile, target)
+        if len(path) > 0:
+            while unit.moves > 0 and len(self.find_path_avoid_managers(unit.tile, target)) > 0:
+                if not unit.move(self.find_path_avoid_managers(unit.tile, target)[0]):
+                    break
+        elif len(self.find_path(unit.tile, target)) > 0:
             while unit.moves > 0 and len(self.find_path(unit.tile, target)) > 0:
                 if not unit.move(self.find_path(unit.tile, target)[0]):
                     break
@@ -221,13 +226,37 @@ class AI(BaseAI):
                 unit.pickup(target, 0, ore)
 
     def deposit(self, unit, color):
-        tile = self.get_closest_machine(unit, color)
-        while unit.moves > 0 and len(self.find_path(unit.tile, tile)) > 1:
-            if not unit.move(self.find_path(unit.tile, tile)[0]):
-                break
+        tile = self.get_closest_machine_with_materials(unit, color)
+        if tile is None or len(self.find_path(unit, tile)) == 0:
+            tile = self.get_closest_machine(unit, color)
+        path = self.find_path_avoid_managers(unit.tile, tile)
+        if len(path) > 0:
+            while unit.moves > 0 and len(self.find_path_avoid_managers(unit.tile, tile)) > 1:
+                if not unit.move(self.find_path_avoid_managers(unit.tile, tile)[0]):
+                    break
+        else:
+            while unit.moves > 0 and len(self.find_path(unit.tile, tile)) > 1:
+                if not unit.move(self.find_path(unit.tile, tile)[0]):
+                    break
         if len(self.find_path(unit.tile, tile)) <= 1:
             print('\tdropping ' + color)
             unit.drop(tile, 0, color)
+
+    def get_closest_machine_with_materials(self, unit, color):
+        machines = []
+        smallest = 999
+        closest_tile = None
+
+        for tile in self.game.tiles:
+            if tile.machine is not None and tile.machine.ore_type == color and tile.blueium_ore > 0 or tile.redium_ore > 0:
+                machines.append(tile)
+
+        for tile in machines:
+            path_length = len(self.find_path(unit.tile, tile))
+            if path_length != 0 and path_length < smallest:
+                smallest = path_length
+                closest_tile = tile
+        return closest_tile
 
     def get_closest_machine(self, unit, color):
         machines = []
@@ -358,6 +387,67 @@ class AI(BaseAI):
         ret += tile.blueium
 
         return ret
+
+    def find_path_with_custom_blocked_tiles(self, start, goal, blocked_tiles):
+        if start == goal:
+            return []
+
+        # queue of the tiles that will have their neighbors searched for 'goal'
+        fringe = []
+
+        # How we got to each tile that went into the fringe.
+        came_from = {}
+
+        # Enqueue start as the first tile to have its neighbors searched.
+        fringe.append(start)
+
+        # keep exploring neighbors of neighbors... until there are no more.
+        while len(fringe) > 0:
+            # the tile we are currently exploring.
+            inspect = fringe.pop(0)
+
+            # cycle through the tile's neighbors.
+            for neighbor in inspect.get_neighbors():
+                # if we found the goal, we have the path!
+                if neighbor == goal:
+                    # Follow the path backward to the start from the goal and
+                    # # return it.
+                    path = [goal]
+
+                    # Starting at the tile we are currently at, insert them
+                    # retracing our steps till we get to the starting tile
+                    while inspect != start:
+                        path.insert(0, inspect)
+                        inspect = came_from[inspect.id]
+                    return path
+                # else we did not find the goal, so enqueue this tile's
+                # neighbors to be inspected
+
+                # if the tile exists, has not been explored or added to the
+                # fringe yet, and it is pathable
+                if neighbor and neighbor.id not in came_from and neighbor not in blocked_tiles and (
+                    neighbor.is_pathable()
+                ):
+                    # add it to the tiles to be explored and add where it came
+                    # from for path reconstruction.
+                    fringe.append(neighbor)
+                    came_from[neighbor.id] = inspect
+
+        # if you're here, that means that there was not a path to get to where
+        # you want to go; in that case, we'll just return an empty path.
+        return []
+
+    def find_path_avoid_managers(self, start, goal):
+        enemy_managers = [x for x in self.player.opponent.units if x.job.title == 'manager' and x.tile is not None]
+        bad_tiles = []
+        for manager in enemy_managers:
+            bad_tiles.append(manager.tile.tile_north)
+            bad_tiles.append(manager.tile.tile_west)
+            bad_tiles.append(manager.tile.tile_east)
+            bad_tiles.append(manager.tile.tile_south)
+            bad_tiles.append(manager.tile)
+        return self.find_path_with_custom_blocked_tiles(start, goal, bad_tiles)
+
 
     def find_path(self, start, goal):
         """A very basic path finding algorithm (Breadth First Search) that when
